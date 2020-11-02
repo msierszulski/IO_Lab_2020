@@ -37,39 +37,50 @@ namespace ClassLibrary
 
         protected override void BeginDataTransmission(NetworkStream networkStream)
         {
-            Beginning(networkStream);
-
-            while (true)
+            using (Database db = new Database())
             {
-                try
+                Login(networkStream, db);
+
+                while (true)
                 {
-                    StreamConverter converter = new StreamConverter();
-                    string msg;
-                    byte[] input = new byte[3];
-                    networkStream.Read(input, 0, 3);
-                    msg = Encoding.Default.GetString(input);
-                    converter.checkStream(msg);
-                    if (converter.check == "error")
+                    try
                     {
-                        Console.WriteLine("Can't read input!\n");
-                        byte[] error = Encoding.Default.GetBytes("Can't read input!\n");
-                        networkStream.Write(error, 0, error.Length);
+                        StreamConverter converter = new StreamConverter();
+                        string msg;
+                        byte[] input = new byte[3];
+                        networkStream.Read(input, 0, 3);
+                        msg = Encoding.Default.GetString(input);
+                        converter.checkStream(msg);
+                        if (converter.check == "error")
+                        {
+                            Console.WriteLine("Can't read input!\r\n");
+                            byte[] error = Encoding.Default.GetBytes("Can't read input!\r\n");
+                            networkStream.Write(error, 0, error.Length);
+                        }
+                        else if (converter.check == "ok")
+                        {
+                            Console.WriteLine(Encoding.Default.GetString(input));
+                            converter.Calculator(Encoding.Default.GetString(input));
+                            string op = converter.answer.ToString() + "\r\n";
+                            byte[] output = Encoding.Default.GetBytes(op);
+                            networkStream.Write(output, 0, output.Length);
+                            Console.WriteLine(Encoding.Default.GetString(output));
+                        }
+                        else if(converter.check == "db")
+                        {
+                            string dbmsg = db.ReadData();
+                            dbmsg += "\r\n";    
+                            byte[] output = Encoding.Default.GetBytes(dbmsg);
+                            networkStream.Write(output, 0, output.Length);
+                        }
                     }
-                    else if (converter.check == "ok")
+                    catch (IOException e)
                     {
-                        Console.WriteLine(Encoding.Default.GetString(input));
-                        converter.Calculator(Encoding.Default.GetString(input));
-                        string op = converter.answer.ToString() + "\n";
-                        byte[] output = Encoding.Default.GetBytes(op);
-                        networkStream.Write(output, 0, output.Length);
-                        Console.WriteLine(Encoding.Default.GetString(output));
+                        break;
                     }
-                }
-                catch (IOException e)
-                {
-                    break;
                 }
             }
+          
         }
 
         public override void Start()
@@ -78,16 +89,25 @@ namespace ClassLibrary
             AcceptClient();
         }
 
-        public void Beginning(NetworkStream stream)
-        {
-            byte[] hello_msg = new byte[256];
-            string hello_str = "Welcome!\r\n";
-            hello_msg = new ASCIIEncoding().GetBytes(hello_str);
-            stream.Write(hello_msg, 0, hello_str.Length);
 
-            hello_str = "Type 3 characters, please use format XOX where X is digit (0 to 9) and X is the operation (+ or - or / or *)";
-            hello_msg = new ASCIIEncoding().GetBytes(hello_str);
-            stream.Write(hello_msg, 0, hello_str.Length);
+        public void Login(NetworkStream stream, Database db)
+        {
+            string name;
+            byte[] msg = new byte[256];
+            byte[] msg1 = new byte[256];
+            string str = "Welcome! Type your name:\r\n";
+            msg = new ASCIIEncoding().GetBytes(str);
+            stream.Write(msg, 0, str.Length);
+        
+            stream.Read(msg1, 0, msg1.Length);
+            name = Encoding.Default.GetString(msg1);
+
+            db.InsertData(name);
+            str = "Type 3 characters, use format XOX where X is digit (0 to 9) and X is the operation (+ or - or / or *)\r\n" +
+                "To see your name, type \"msg\"\r\n";
+
+            msg = new ASCIIEncoding().GetBytes(str);
+            stream.Write(msg, 0, str.Length);
         }
     }
 }

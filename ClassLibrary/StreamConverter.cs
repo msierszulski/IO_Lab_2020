@@ -36,6 +36,10 @@ namespace ClassLibrary
                     check = "ok";
                 }
             }
+            else if (x == 109 && y == 115 && z == 103)
+            {
+                check = "db";
+            }
             else
             {
                 check = "error";
