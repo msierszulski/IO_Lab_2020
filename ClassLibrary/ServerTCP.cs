@@ -35,9 +35,41 @@ namespace ClassLibrary
 
         }
 
-        protected override void BeginDataTransmission(NetworkStream stream)
+        protected override void BeginDataTransmission(NetworkStream networkStream)
         {
-            Beginning(stream);
+            Beginning(networkStream);
+
+            while (true)
+            {
+                try
+                {
+                    StreamConverter converter = new StreamConverter();
+                    string msg;
+                    byte[] input = new byte[3];
+                    networkStream.Read(input, 0, 3);
+                    msg = Encoding.Default.GetString(input);
+                    converter.checkStream(msg);
+                    if (converter.check == "error")
+                    {
+                        Console.WriteLine("Can't read input!\n");
+                        byte[] error = Encoding.Default.GetBytes("Can't read input!\n");
+                        networkStream.Write(error, 0, error.Length);
+                    }
+                    else if (converter.check == "ok")
+                    {
+                        Console.WriteLine(Encoding.Default.GetString(input));
+                        converter.Calculator(Encoding.Default.GetString(input));
+                        string op = converter.answer.ToString() + "\n";
+                        byte[] output = Encoding.Default.GetBytes(op);
+                        networkStream.Write(output, 0, output.Length);
+                        Console.WriteLine(Encoding.Default.GetString(output));
+                    }
+                }
+                catch (IOException e)
+                {
+                    break;
+                }
+            }
         }
 
         public override void Start()
